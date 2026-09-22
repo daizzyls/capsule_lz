@@ -1,43 +1,39 @@
-import getpass
 import os
 from datetime import datetime
-from functools import wraps
 
 import pandas as pd
 
 
-def log_decorator(func):
-    @wraps(func)
+def loger(func):
+    """Декоратор для логирования вызовов функций в CSV."""
     def wrapper(*args, **kwargs):
+        log_file = 'logs.csv'
+        file_check = os.path.isfile(log_file)
+        
+        
+        if file_check and os.path.getsize(log_file) > 0:
+            current_id = len(pd.read_csv(log_file, sep=';'))
+        else:
+            current_id = 0
 
-        pc_username = getpass.getuser()
-        function_name = func.__name__ 
-
-        now = datetime.now()  
-        date = now.strftime("%d.%m.%Y")
-        time = now.strftime("%H:%M:%S")
-
-        log_file = "logs.csv"  
-        next_id = 1 
-
-        if os.path.isfile(log_file) and os.path.getsize(log_file) > 0: 
-            df= pd.read_csv(log_file)  
-            if 'id' in df.columns and not df.empty: 
-                next_id = df['id'].max() + 1  
-
-        new_row = pd.DataFrame([{  
-            'id': next_id,
-            'pc_username': pc_username,
-            'function_name': function_name,
-            'Date': date,
-            'Time': time
-        }])
-
-        if not os.path.isfile(log_file): 
-            new_row.to_csv(log_file, index=False)  
-        else:  
-            new_row.to_csv(log_file, mode='a', header=False, index=False)
+        now = datetime.now()
+        info = {
+            'pc_username': os.getlogin(),
+            'function_name': func.__name__,
+            'Date': now.strftime('%d.%m.%Y'),  
+            'Time': now.strftime('%H:%M:%S')
+        }
+        
+        df = pd.DataFrame([info], index=[current_id])
+        df.to_csv(
+            log_file, 
+            mode="a", 
+            index_label='id', 
+            header=not file_check or os.path.getsize(log_file) == 0, 
+            sep=';', 
+            encoding='UTF-8'
+        )
 
         return func(*args, **kwargs)
-
+    
     return wrapper
